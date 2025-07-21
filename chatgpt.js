@@ -1,12 +1,14 @@
-const puppeteer = require("puppeteer");
 const crypto = require("crypto");
 const axios = require("axios");
+const puppeteer = require("puppeteer-extra");
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+puppeteer.use(StealthPlugin());
 require('dotenv').config();
 
 const SLACK_WEBHOOK_URL = process.env.PY_SLACK_URL;
 
 class ChatGPT {
-  constructor(chatbotUrl = "https://chat.openai.com/", headless = false) {
+  constructor(chatbotUrl = "https://chat.openai.com/", headless = true) {
     this.browser = null;
     this.page = null;
     this.headless = headless;
@@ -21,14 +23,37 @@ class ChatGPT {
   }
 
   async initializeBrowser() {
-    if (this.headless) {
-      this.browser = await puppeteer.launch();
-    } else {
-      this.browser = await puppeteer.connect({
-        browserURL: "http://127.0.0.1:9222",
-      });
+    const args = [
+      "--disable-dev-shm-usage",
+      "--no-zygote",
+      "--no-sandbox",
+      "--disable-gpu",
+      "--disable-web-security",
+      "--disable-site-isolation-trials",
+      "--allow-insecure-localhost",
+      "--ignore-certificate-errors-spki-list",
+      "--disable-features=HttpsFirstBalancedModeAutoEnable",
+      "--disable-blink-features=AutomationControlled",
+      // "--headless=new", // New headless mode
+      "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36" // Realistic UA
+    ];
+    if (!this.headless) {
+      args.push("--auto-open-devtools-for-tabs");
     }
+
+    this.browser = await puppeteer.launch({
+      executablePath: "/usr/bin/google-chrome-stable",
+      defaultViewport: null,
+      headless: this.headless,
+      ignoreHTTPSErrors: true,
+      args
+    });
+    
     this.page = await this.browser.newPage();
+    await this.page.evaluateOnNewDocument(() => {
+      delete navigator.webdriver;
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    });
     console.log("Browser initialized");
   }
 
@@ -78,10 +103,12 @@ class ChatGPT {
       }
 
       await this.page.waitForSelector("#prompt-textarea", { timeout });
+      console.log(`Sending message: ${message}`);
 
       await this.page.type("#prompt-textarea", message, { delay: 60 });
 
       await this.page.click('[data-testid="send-button"]');
+      console.log("Message sent");
       this.lastMessage = message;
       this.conversationHistory.push(`message : ${message} \n`);
       await this.parseGptReply();

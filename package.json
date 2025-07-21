@@ -1,8 +1,21 @@
 {
+  "name": "custom-gpt",
+  "version": "1.0.0",
+  "description": "Custom GPT automation with Puppeteer",
+  "main": "apprunner.js",
+  "scripts": {
+    "start": "node apprunner.js",
+    "dev": "node apprunner.js"
+  },
   "dependencies": {
     "axios": "^1.10.0",
     "dotenv": "^17.2.0",
     "puppeteer": "^24.14.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "winston": "^3.17.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
